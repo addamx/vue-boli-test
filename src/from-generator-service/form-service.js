@@ -1,12 +1,13 @@
 import store from '@state/store'
+import relativeRules from './relativeRules'
 
-const RELATIVEPROPS = ['displayWithRule']
+// const RELATIVEPROPS = ['displayWithRule']
 
 export default {
   data() {
     return {}
   },
-  init(formName = 'from-demo', layout) {
+  init(formName, layout) {
     console.log(layout)
     this.createState(formName, layout)
   },
@@ -19,10 +20,12 @@ export default {
     }
 
     form.state.formStyle = data.formStyle
-
     const fieldCollection = {}
+
+    const tempActionsMap = {}
     data.groups.forEach((group) => {
       group.list.forEach((field) => {
+        // 添加必要的mutations
         fieldCollection[field.id] = {
           id: field.id,
           namespaced: true,
@@ -30,60 +33,80 @@ export default {
             ...field,
             show: true,
           },
-          actions: {},
+          actions: {
+            runRelatives() {},
+          },
           mutations: {
             toggleShow(state, payload) {
               state.show = payload
             },
+            changeValue(state, payload) {
+              state.value = payload
+            },
           },
         }
-        let fieldModule = fieldCollection[field.id]
 
-        let actionsFunc = []
+        if (field.type === 'select') {
+          fieldCollection[
+            field.id
+          ].mutations.changeOptions = function changeOptions(state, payload) {
+            state.options = payload
+          }
+        }
 
-        RELATIVEPROPS.forEach((prop) => {
-          if (prop in field) {
-            let action = () => {}
-
-            switch (field[prop]) {
-              case 'displayWithRule':
-                if (field[prop] === 2) {
-                  action = (state, commit, rootState) => {
-                    let show = field.displayWith.every((v) => {
-                      return v.values.some(
-                        (value) => value === rootState[formName][v.field].value
-                      )
-                    })
-                    commit('toggleShow', show)
-                  }
-                }
-
-                actionsFunc.push(action)
-                break
+        // 检测联动规则, 收集相应的action
+        for (let rule in relativeRules) {
+          if (rule in field) {
+            let relMap = relativeRules[rule].handler(formName, field)
+            for (let i in relMap) {
+              if (!tempActionsMap[i]) {
+                tempActionsMap[i] = []
+              }
+              tempActionsMap[i].push(relMap[i])
             }
           }
-        })
-
-        fieldModule.actions.runAll = function runAll(state, commit, rootState) {
-          actionsFunc.forEach((func) => {
-            func(state, commit, rootState)
-          })
         }
       })
     })
 
-    console.log(form)
-    console.log(fieldCollection)
+    // 生成联动相关的action
+    console.log(tempActionsMap)
+    let i = 0
+    for (let fieldId in tempActionsMap) {
+      let _allActions = []
 
-    // 注册模块 `myModule`
+      tempActionsMap[fieldId].forEach((action) => {
+        fieldCollection[fieldId].actions['relative_' + i] = action
+        _allActions.push(`${formName}/${fieldId}/relative_${i}`)
+        i++
+      })
+
+      fieldCollection[fieldId].actions['runRelatives'] = function runRelatives({
+        dispatch,
+      }) {
+        /* before relative actions */
+        _allActions.forEach((actionName) => {
+          dispatch(actionName, null, { root: true })
+        })
+        /* after relative actions */
+      }
+    }
+
+    // 注册模块
     store.registerModule(formName, {
       ...form,
       modules: fieldCollection,
     })
-    // // 注册嵌套模块 `nested/myModule`
-    // store.registerModule(['nested', 'myModule'], {
-    //   // ...
-    // })
+
+    // run all relative actions once
+    // TODO: maybe unnecessary?
+    let $actions = store._actions
+    for (let actionName in $actions) {
+      let reg = new RegExp(`${formName}/.*/runRelatives`)
+      if (reg.test(actionName)) {
+        store.dispatch(actionName)
+      }
+    }
   },
   createFieldAction() {},
 }

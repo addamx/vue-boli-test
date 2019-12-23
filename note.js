@@ -1,4 +1,4 @@
-let data= {
+let data = {
     layoutObj: {
 		groupName,
 		describ,

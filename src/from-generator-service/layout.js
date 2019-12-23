@@ -16,6 +16,23 @@ export default {
           isEdit: 1,
           value: '',
         },
+        {
+          id: 'sex',
+          type: 'select',
+          label: '性别',
+          isEdit: 1,
+          value: '男',
+          options: ['男', '女'],
+        },
+        {
+          id: 'photos',
+          type: 'select',
+          label: '照片',
+          isEdit: 1,
+          value: '',
+          options: [],
+          getOptions: 'sex',
+        },
       ],
     },
     {
@@ -34,6 +51,7 @@ export default {
           type: 'text',
           label: '职业',
           isEdit: 1,
+          value: '',
           displayWithRule: 2,
           displayWith: [
             {
@@ -41,8 +59,8 @@ export default {
               values: ['18', '19', '20'],
             },
             {
-              field: 'name',
-              values: ['Tom'],
+              field: 'photos',
+              values: ['showjob'],
             },
           ],
         },

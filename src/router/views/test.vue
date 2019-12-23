@@ -20,7 +20,7 @@ export default {
 
 <template>
   <Layout>
-    <form-generator form-name="demoFrom" :layout-promise="fetchLayout" />
+    <form-generator form-name="demoForm" :layout-promise="fetchLayout" />
   </Layout>
 </template>
 
